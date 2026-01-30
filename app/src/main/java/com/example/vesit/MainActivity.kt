@@ -11,19 +11,42 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import com.example.vesit.features.auth.LoginScreen
+import com.example.vesit.ui.DashboardScreen
 import com.example.vesit.ui.theme.VESITTheme
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            val navController = rememberNavController()
+            val user = FirebaseAuth.getInstance().currentUser
+
             VESITTheme {
+                // Scaffold provides the top-level structure (like bars and paddings)
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+                    // Wrap the NavHost in a Box or Column to apply innerPadding
+                    NavHost(
+                        navController = navController,
+                        startDestination = if (user == null) "login" else "dashboard",
+                        modifier = Modifier.padding(innerPadding) // Important to handle system bars
+                    ) {
+                        composable("login") {
+                            LoginScreen(
+                                viewModel = viewModel(),
+                                navController = navController // Pass the controller here!
+                            )
+                        }
+                        composable("dashboard") {
+                            DashboardScreen()
+                        }
+                    }
                 }
             }
         }
