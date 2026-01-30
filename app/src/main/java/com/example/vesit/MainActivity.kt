@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
@@ -17,6 +18,12 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.vesit.features.auth.LoginScreen
 import com.example.vesit.ui.DashboardScreen
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.view.WindowCompat
+import com.example.vesit.features.attendance.AttendanceScreen
+
 import com.example.vesit.ui.theme.VESITTheme
 import com.google.firebase.auth.FirebaseAuth
 
@@ -27,11 +34,19 @@ class MainActivity : ComponentActivity() {
         setContent {
             val navController = rememberNavController()
             val user = FirebaseAuth.getInstance().currentUser
-
+            SideEffect {
+                window.statusBarColor = Color.Transparent.toArgb()
+                WindowCompat.getInsetsController(window, window.decorView)
+                    .isAppearanceLightStatusBars = true
+            }
             VESITTheme {
                 // Scaffold provides the top-level structure (like bars and paddings)
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Wrap the NavHost in a Box or Column to apply innerPadding
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    contentWindowInsets = WindowInsets(0)
+                ) { innerPadding ->
+
+                // Wrap the NavHost in a Box or Column to apply innerPadding
                     NavHost(
                         navController = navController,
                         startDestination = if (user == null) "login" else "dashboard",
@@ -46,6 +61,7 @@ class MainActivity : ComponentActivity() {
                         composable("dashboard") {
                             DashboardScreen(navController = navController) // Pass the controller
                         }
+                        composable("attendance_details") { AttendanceScreen(navController) }
                     }
                 }
             }

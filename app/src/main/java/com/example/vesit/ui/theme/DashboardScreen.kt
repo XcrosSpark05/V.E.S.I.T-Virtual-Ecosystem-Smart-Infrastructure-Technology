@@ -1,19 +1,19 @@
 package com.example.vesit.ui
 
-import android.Manifest
-import android.os.Build
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -23,116 +23,168 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.vesit.features.attendance.AttendanceViewModel
 import com.google.firebase.auth.FirebaseAuth
+import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Optimized Pastel Palette
+val SoftPurple = Color(0xFFE8EAF6)
+val SoftPink = Color(0xFFFCE4EC)
+val SoftOrange = Color(0xFFFFF3E0)
+val SoftGreen = Color(0xFFE8F5E9)
+val TextDark = Color(0xFF1A1A1A)
+
 @Composable
 fun DashboardScreen(navController: NavController) {
     val user = FirebaseAuth.getInstance().currentUser
     val attendanceViewModel: AttendanceViewModel = viewModel()
     val context = LocalContext.current
-    val status by attendanceViewModel.attendanceStatus.collectAsState()
+    val firstName = user?.displayName?.split(" ")?.get(0) ?: "Student"
 
-    // 1. Define the Permission Launcher at the top level
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { permissions ->
-        val allGranted = permissions.values.all { it }
-        if (allGranted) {
-            attendanceViewModel.markAttendanceWithProximity(context)
-        } else {
-            Toast.makeText(context, "Bluetooth & Location required for Attendance", Toast.LENGTH_SHORT).show()
-        }
+    // Time-based Greeting Logic
+    val greeting = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+        in 0..11 -> "Good Morning"
+        in 12..15 -> "Good Afternoon"
+        in 16..20 -> "Good Evening"
+        else -> "Good Night"
     }
 
-    LaunchedEffect(status) {
-        status?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
-        }
-    }
-
+    // Scaffold with zero insets to remove the "too much gap" issue
     Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("VESIT Nexus", fontWeight = FontWeight.Bold) },
-                actions = {
-                    IconButton(onClick = {
-                        FirebaseAuth.getInstance().signOut()
-                        navController.navigate("login") {
-                            popUpTo("dashboard") { inclusive = true }
-                        }
-                    }) {
-                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
+        containerColor = Color.White,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0)
+    ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(16.dp)
+                .padding(padding)
+                .statusBarsPadding() // Integrates perfectly with the status bar
+                .padding(horizontal = 20.dp)
         ) {
-            Text(text = "Welcome back,", fontSize = 14.sp, color = MaterialTheme.colorScheme.secondary)
-            Text(text = user?.displayName ?: "Student", fontSize = 22.sp, fontWeight = FontWeight.Bold)
+            // Modern Custom Header (Replaces TopAppBar)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Dashboard",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = TextDark
+                    )
+                    Text(
+                        text = "$greeting, $firstName",
+                        fontSize = 14.sp,
+                        color = Color.Gray,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(24.dp))
+                // Notification Circle
+                Surface(
+                    modifier = Modifier.size(45.dp),
+                    shape = CircleShape,
+                    color = Color(0xFFF5F5F5),
+                    onClick = { /* Notifications */ }
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(Icons.Default.Notifications, null, tint = TextDark, modifier = Modifier.size(22.dp))
+                    }
+                }
+            }
 
+            Text(
+                text = "Academic Summary",
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextDark,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // Feature Grid
             LazyVerticalGrid(
                 columns = GridCells.Fixed(2),
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.fillMaxSize()
             ) {
                 item {
-                    DashboardCard(
-                        title = "Attendance",
-                        icon = Icons.Default.CheckCircle,
-                        status = "Mark Now",
-                        onClick = {
-                            // 2. Trigger permission check before scanning
-                            val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                arrayOf(
-                                    Manifest.permission.BLUETOOTH_SCAN,
-                                    Manifest.permission.BLUETOOTH_CONNECT,
-                                    Manifest.permission.ACCESS_FINE_LOCATION
-                                )
-                            } else {
-                                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
-                            }
-                            permissionLauncher.launch(permissions)
-                        }
+                    WaveFeatureCard(
+                        "Attendance", "Mark Now", Icons.Default.CheckCircle, SoftPurple,
+                        onClick = { navController.navigate("attendance_details") }
                     )
                 }
-                item {
-                    DashboardCard("Payments", Icons.Default.AccountBalanceWallet, "PaySetu", onClick = {})
+                item { WaveFeatureCard("Exams", "Results", Icons.Default.Assignment, SoftPink) {} }
+                item { WaveFeatureCard("Schedule", "Class Timings", Icons.Default.CalendarToday, SoftOrange) {} }
+                item { WaveFeatureCard("Notes", "Study Material", Icons.Default.Description, SoftGreen) {} }
+                item { WaveFeatureCard("Canteen", "Menu & Orders", Icons.Default.Restaurant, SoftPurple) {} }
+                item { WaveFeatureCard("Complaints", "Raise Issue", Icons.Default.ReportProblem, SoftPink) {} }
+
+                item(span = { GridItemSpan(2) }) {
+                    WaveFeatureCard("Share with Friends", "Invite classmates", Icons.Default.Share, SoftGreen, isFullWidth = true) {}
                 }
-                item {
-                    DashboardCard("LMS", Icons.Default.Book, "3 Pending", onClick = {})
-                }
-                item {
-                    DashboardCard("Events", Icons.Default.Notifications, "Check Now", onClick = {})
-                }
+
+                item(span = { GridItemSpan(2) }) { Spacer(modifier = Modifier.height(30.dp)) }
             }
         }
     }
 }
 
 @Composable
-fun DashboardCard(title: String, icon: ImageVector, status: String, onClick: () -> Unit) {
-    ElevatedCard(
-        modifier = Modifier.fillMaxWidth().height(140.dp),
+fun WaveFeatureCard(
+    title: String,
+    status: String,
+    icon: ImageVector,
+    bgColor: Color,
+    isFullWidth: Boolean = false,
+    onClick: () -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(if (isFullWidth) 100.dp else 160.dp),
+        shape = RoundedCornerShape(28.dp), // Modern soft corners
+        colors = CardDefaults.cardColors(containerColor = bgColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         onClick = onClick
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp).fillMaxSize(),
-            horizontalAlignment = Alignment.Start,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp))
-            Column {
-                Text(text = title, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                Text(text = status, fontSize = 14.sp, color = MaterialTheme.colorScheme.outline)
+        Box(modifier = Modifier.fillMaxSize()) {
+            // The Wave Pattern logic from reference image
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val path = Path().apply {
+                    moveTo(0f, size.height * 0.75f)
+                    cubicTo(
+                        size.width * 0.3f, size.height * 0.65f,
+                        size.width * 0.7f, size.height * 0.95f,
+                        size.width, size.height * 0.8f
+                    )
+                    lineTo(size.width, size.height)
+                    lineTo(0f, size.height)
+                    close()
+                }
+                drawPath(path, color = Color.Black.copy(alpha = 0.05f))
+            }
+
+            // Top-right circle menu icon
+            Surface(
+                modifier = Modifier.align(Alignment.TopEnd).padding(16.dp).size(32.dp),
+                shape = CircleShape,
+                color = Color.Black.copy(alpha = 0.08f)
+            ) {
+                Icon(Icons.Default.MoreHoriz, null, tint = TextDark, modifier = Modifier.padding(6.dp))
+            }
+
+            Column(
+                modifier = Modifier.padding(20.dp).align(Alignment.BottomStart)
+            ) {
+                Text(title, fontSize = 18.sp, fontWeight = FontWeight.ExtraBold, color = TextDark)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(icon, null, modifier = Modifier.size(14.dp), tint = Color.DarkGray)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(status, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
+                }
             }
         }
     }
