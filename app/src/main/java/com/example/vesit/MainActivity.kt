@@ -44,7 +44,7 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         composable("dashboard") {
-                            DashboardScreen()
+                            DashboardScreen(navController = navController) // Pass the controller
                         }
                     }
                 }
