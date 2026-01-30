@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "169727861165",
+    "project_id": "vesit-a9686",
+    "storage_bucket": "vesit-a9686.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:169727861165:android:6a0a1e8a359e40f3234124",
+        "android_client_info": {
+          "package_name": "com.example.vesit"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "169727861165-08seo94krbet27pg9osoeus1e7pruu1g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.vesit",
+            "certificate_hash": "47136b0ab89b7c6fd0f96ab9092b11215f360cfd"
+          }
+        },
+        {
+          "client_id": "169727861165-so0kcikrqpdaos3lo6nd46l14irmi60m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDQrU_kTaQq75lb5rp-tTPpdR19LPvsKmg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "169727861165-so0kcikrqpdaos3lo6nd46l14irmi60m.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

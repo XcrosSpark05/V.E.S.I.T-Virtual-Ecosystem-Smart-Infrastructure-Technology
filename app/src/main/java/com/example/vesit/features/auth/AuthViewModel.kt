@@ -34,6 +34,13 @@ class AuthViewModel : ViewModel() {
                     if (user?.email?.endsWith("@ves.ac.in") == true) {
                         _userState.value = user
                     } else {
+                        // 1. Delete the user from Firebase Auth database
+                        user?.delete()?.addOnCompleteListener { task ->
+                            if (task.isSuccessful) {
+                                println("Unauthorized user record deleted successfully.")
+                            }
+                        }
+                        // 2. Sign out and clear state
                         auth.signOut()
                         _userState.value = null
                         _errorEvents.send("Access Denied: Please use your VESIT email.")
