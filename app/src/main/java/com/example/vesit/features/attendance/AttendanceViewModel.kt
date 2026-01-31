@@ -4,10 +4,10 @@ import android.content.Context
 import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.vesit.features.attendance.data.AttendanceRecord
 import com.example.vesit.features.attendance.data.BeaconScanner
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,64 +23,38 @@ class AttendanceViewModel : ViewModel() {
     private val _attendanceStatus = MutableStateFlow<String?>(null)
     val attendanceStatus = _attendanceStatus.asStateFlow()
 
-    // Loading state to show a spinner on the Dashboard card
     private val _isLoading = MutableStateFlow(false)
     val isLoading = _isLoading.asStateFlow()
 
-    fun markAttendanceWithProximity(context: Context) {
+    fun markAttendance(context: Context, selectedSubject: String) {
         val user = auth.currentUser ?: return
         val beaconScanner = BeaconScanner(context)
-        val currentDeviceId = Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
-        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
         viewModelScope.launch {
             _isLoading.value = true
-            _attendanceStatus.value = "Scanning for Teacher's signal..."
+            _attendanceStatus.value = "Searching for Teacher..."
 
             try {
-                // 1. Start BLE Scanning
                 beaconScanner.startScanning()
 
-                // 2. Wait for a signal (Timeout after 7 seconds)
+                // Proximity Handshake Loop
                 var timeoutCounter = 0
-                while (!beaconScanner.isTeacherNearby.value && timeoutCounter < 70) {
-                    delay(100) // Check every 100ms
+                val maxTimeout = 100
+                while (!beaconScanner.isTeacherNearby.value && timeoutCounter < maxTimeout) {
+                    delay(100)
                     timeoutCounter++
                 }
                 beaconScanner.stopScanning()
 
-                // 3. Proximity Check (The Shield)
-                if (!beaconScanner.isTeacherNearby.value) {
-                    _attendanceStatus.value = "Error: Teacher not detected. Are you in class?"
-                    _isLoading.value = false
-                    return@launch
-                }
+                // In markAttendance function, update the Success block:
+                if (beaconScanner.isTeacherNearby.value) {
+                    saveAttendanceToFirestore(context, selectedSubject)
+                    _attendanceStatus.value = "Success: Attendance Marked!"
 
-                // 4. Device Binding & Match Check
-                val userDoc = db.collection("users").document(user.uid).get().await()
-                if (!userDoc.exists() || !userDoc.contains("device_id")) {
-                    db.collection("users").document(user.uid)
-                        .set(mapOf("device_id" to currentDeviceId, "email" to user.email)).await()
-                }
-
-                val registeredDeviceId = userDoc.getString("device_id") ?: currentDeviceId
-                if (registeredDeviceId != currentDeviceId) {
-                    _attendanceStatus.value = "Error: Unauthorized Device!"
-                    _isLoading.value = false
-                    return@launch
-                }
-
-                // 5. Date Check & Final Write
-                val attendanceDoc = db.collection("users").document(user.uid)
-                    .collection("attendance").document(today).get().await()
-
-                if (attendanceDoc.exists()) {
-                    _attendanceStatus.value = "Already marked for today!"
-                } else {
-                    val record = AttendanceRecord(deviceId = currentDeviceId)
-                    db.collection("users").document(user.uid)
-                        .collection("attendance").document(today).set(record).await()
-                    _attendanceStatus.value = "Attendance marked successfully!"
+                    // Direct UI feedback
+                    android.widget.Toast.makeText(context, "Attendance Sent to Teacher!", android.widget.Toast.LENGTH_SHORT).show()
+                }else {
+                    _attendanceStatus.value = "Error: Teacher signal not detected."
                 }
 
             } catch (e: Exception) {
@@ -90,5 +64,26 @@ class AttendanceViewModel : ViewModel() {
                 beaconScanner.stopScanning()
             }
         }
+    }
+
+    private suspend fun saveAttendanceToFirestore(context: Context, subject: String) {
+        val auth = FirebaseAuth.getInstance()
+        val today = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
+
+        // Check if we are in real mode or demo mode
+        val email = auth.currentUser?.email ?: "rahul.student@ves.ac.in"
+        val uid = auth.currentUser?.uid ?: "demo_rahul_123"
+
+        val broadcastData = hashMapOf(
+            "email" to email,
+            "date" to today,
+            "timestamp" to FieldValue.serverTimestamp()
+        )
+
+        // Using the FLAT live_sync collection that worked for you
+        db.collection("live_sync")
+            .document("${uid}_$today")
+            .set(broadcastData)
+            .await()
     }
 }
